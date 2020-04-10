@@ -7,30 +7,73 @@
 #include "ns3/tcp-westwood.h"
 #include <iostream>
 
-
 NS_LOG_COMPONENT_DEFINE ("group35");
 Ptr<PacketSink> sink;                         
 uint64_t lastTotalRx = 0; 
 uint32_t tcpSegmentSize = 1000; 
 double simulationTime = 50.0;
 
+void calculate_avg_bandwidths()
+{
+  FILE* fp = fopen("server.pcap","r");
+  char line[1024];
+  uint32_t rtsctsack_size = 14;
+  uint32_t tcpack_size = 74;
+  uint32_t cts_size = 14;
+  uint32_t rts_size = 20;
+  uint32_t data_size = tcpSegmentSize + 34;
+
+  std::string rtsctsack = "Acknowledgment";
+  std::string tcpack = "ack";
+  std::string rts = "Request-To-Send";
+  std::string cts = "Clear-To-Send";
+  std::string seq = "seq";
+
+  uint32_t rtsctsack_count = 0;
+  uint32_t tcpack_count = 0;
+  uint32_t rts_count = 0;
+  uint32_t cts_count = 0;
+  uint32_t data_count = 0;
+
+  /*Reading from the file and incrementing the appropriate counters*/
+  while(fgets(line, 1024, fp))
+  {
+    std::string s = line;
+    if(s.find(rtsctsack) != std::string::npos) rtsctsack_count++;
+    else if(s.find(tcpack) != std::string::npos and s.find(seq) == std::string::npos) tcpack_count++;
+    else if(s.find(rts) != std::string::npos)  rts_count++;
+    else if(s.find(cts) != std::string::npos)  cts_count++;
+    else if(s.find(seq) != std::string::npos)  data_count++;
+  }
+
+  /*Calculation of various bandwidths with the data obtained from the file*/
+  double rts_bandwidth = (rts_size*rts_count*8/simulationTime)/1000;
+  double cts_bandwidth = (cts_size*cts_count*8/simulationTime)/1000;
+  double rtsctsack_bandwidth = (rtsctsack_size*rts_count*8/simulationTime)/1000;
+  double tcpack_bandwidth = (tcpack_size*tcpack_count*8/simulationTime)/1000;
+  double data_bandwidth = (data_size*tcpack_count*8/simulationTime)/1000;
+
+  printf("Average bandwidth spent in transmitting RTS : %f\n",rts_bw );
+  printf("Average bandwidth spent in transmitting CTS : %f\n",cts_bw );
+  printf("Average bandwidth spent in transmitting RTS-CTS ACKs : %f\n",rtsctsack_bw );
+  printf("Average bandwidth spent in transmitting TCP ACKs : %f\n",tcpack_bw );
+  printf("Average bandwidth spent in transmitting TCP segments : %f\n",data_bw );    
+}
+
 uint32_t MacTxDropCount = 0, PhyTxDropCount = 0, PhyRxDropCount = 0;
 
-void
-MacTxDrop(Ptr<const Packet> p)
+void MacTxDrop(Ptr<const Packet> p)
 {
   NS_LOG_INFO("Packet Drop");
   MacTxDropCount++;
 }
 
-void
-PhyTxDrop(Ptr<const Packet> p)
+void PhyTxDrop(Ptr<const Packet> p)
 {
   NS_LOG_INFO("Packet Drop");
   PhyTxDropCount++;
 }
-void
-PhyRxDrop(Ptr<const Packet> p)
+void PhyRxDrop(Ptr<const Packet> p)
 {
   NS_LOG_INFO("Packet Drop");
   PhyRxDropCount++;
@@ -188,7 +231,7 @@ void Simulator_80211(uint32_t RtsCtsThreshold)
   }
 
   double averageThroughput = ((sink->GetTotalRx () * 8) / (1e6  * simulationTime));
-  std::cout << "\nAverage throughtput: " << averageThroughput << " Mbit/s" << std::endl;
+  std::cout << "\nAverage TCP throughtput obtained: " << averageThroughput << " Mbit/s" << std::endl;
 
   monitor->SerializeToXmlFile("group35.xml", true, true);
 
@@ -198,15 +241,15 @@ void Simulator_80211(uint32_t RtsCtsThreshold)
 int main()
 {
 	uint32_t thresholds[] = {0,256,512,1024};
-	for(int i=0;i<4; i++)
+	for(int i = 0; i < 4; i++)
 	{
 		uint32_t rtsCtsThreshold = thresholds[i];
-		std::cout<<"Results with RTS Threshold : "<<rtsCtsThreshold<<std::endl;
-		run(rtsCtsThreshold);
+		std::cout<<"Running simulation with RTS threshold : "<<rtsCtsThreshold<<"\n";
+		Simulator_80211(rtsCtsThreshold);
 		system("tcpdump -nn -tt -r Server-1-0.pcap > server.pcap");
-		calculateAnalytics();
-		std::cout<<"Collisions : "<<MaTxDropCount+PhyTxDropCount+PhyRxDropCount<<std::endl;
-		std::cout<<"---------------------------------------------------------------"<<std::endl;
+		calculate_avg_bandwidths();
+		std::cout<<"Total number of packets lost due to collisions : "<<MaTxDropCount+PhyTxDropCount+PhyRxDropCount<<"\n";
+		std::cout<<"---------------------------------------------------------------"<<"\n";
 	}
 	return 0;
 }
