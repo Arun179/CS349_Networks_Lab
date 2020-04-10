@@ -8,6 +8,9 @@
 #include <iostream>
 
 NS_LOG_COMPONENT_DEFINE ("group35");
+
+using namespace ns3;
+
 Ptr<PacketSink> sink;                         
 uint64_t lastTotalRx = 0; 
 uint32_t tcpSegmentSize = 1000; 
@@ -53,11 +56,11 @@ void calculate_avg_bandwidths()
   double tcpack_bandwidth = (tcpack_size*tcpack_count*8/simulationTime)/1000;
   double data_bandwidth = (data_size*tcpack_count*8/simulationTime)/1000;
 
-  printf("Average bandwidth spent in transmitting RTS : %f\n",rts_bw );
-  printf("Average bandwidth spent in transmitting CTS : %f\n",cts_bw );
-  printf("Average bandwidth spent in transmitting RTS-CTS ACKs : %f\n",rtsctsack_bw );
-  printf("Average bandwidth spent in transmitting TCP ACKs : %f\n",tcpack_bw );
-  printf("Average bandwidth spent in transmitting TCP segments : %f\n",data_bw );    
+  printf("Average bandwidth spent in transmitting RTS : %f\n",rts_bandwidth );
+  printf("Average bandwidth spent in transmitting CTS : %f\n",cts_bandwidth );
+  printf("Average bandwidth spent in transmitting RTS-CTS ACKs : %f\n",rtsctsack_bandwidth );
+  printf("Average bandwidth spent in transmitting TCP ACKs : %f\n",tcpack_bandwidth );
+  printf("Average bandwidth spent in transmitting TCP segments : %f\n",data_bandwidth );    
 }
 
 uint32_t MacTxDropCount = 0, PhyTxDropCount = 0, PhyRxDropCount = 0;
@@ -104,18 +107,11 @@ void Simulator_80211(uint32_t RtsCtsThreshold)
 {
 
   std::string datarate = "200";           //default taken as 100Mbps
-  std::string tcpVariant = "TcpWestwood"; //default TcpWestwood
-  std::string FragmentationThreshold = "2000";
   bool pcapTracing = true;                // PCAP Tracing is enabled or not
-  std::cout<<"Enter TCP variant TcpWestwood/TcpHybla\n";
-  std::cin>>tcpVariant;
-  setTCPVariant(tcpVariant);
-
-
 
   /* Setting the RTS/CTS threshold */
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", UintegerValue(RtsCtsThreshold));
-  Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", FragmentationThreshold);
+  Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue("1500"));
 
   /* Set TCP segment size */
   /*Value given in question */
@@ -240,6 +236,11 @@ void Simulator_80211(uint32_t RtsCtsThreshold)
 
 int main()
 {
+	std::string tcpVariant = "TcpWestwood"; //default TcpWestwood
+  	std::cout<<"Enter TCP variant TcpWestwood/TcpHybla\n";
+  	std::cin>>tcpVariant;
+ 	setTCPVariant(tcpVariant);
+
 	uint32_t thresholds[] = {0,256,512,1024};
 	for(int i = 0; i < 4; i++)
 	{
@@ -248,7 +249,7 @@ int main()
 		Simulator_80211(rtsCtsThreshold);
 		system("tcpdump -nn -tt -r Server-1-0.pcap > server.pcap");
 		calculate_avg_bandwidths();
-		std::cout<<"Total number of packets lost due to collisions : "<<MaTxDropCount+PhyTxDropCount+PhyRxDropCount<<"\n";
+		std::cout<<"Total number of packets lost due to collisions : "<<MacTxDropCount+PhyTxDropCount+PhyRxDropCount<<"\n";
 		std::cout<<"---------------------------------------------------------------"<<"\n";
 	}
 	return 0;
