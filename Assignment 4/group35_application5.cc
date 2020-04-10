@@ -106,7 +106,7 @@ void setTCPVariant(std::string tcpVariant)
 void Simulator_80211(uint32_t RtsCtsThreshold)
 {
 
-  std::string datarate = "200";           //default taken as 100Mbps
+  std::string datarate = "200kbps";           //default taken as 200Kbps
   bool pcapTracing = true;                // PCAP Tracing is enabled or not
 
   /* Setting the RTS/CTS threshold */
@@ -124,7 +124,7 @@ void Simulator_80211(uint32_t RtsCtsThreshold)
   YansWifiChannelHelper wifiChannel;
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
   /*follows the equation of isotropic antenna */
-  wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
+  wifiChannel.AddPropagationLoss ("ns3::RandomPropagationLossModel");
 
   /* Setup Physical Layer */
   YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
